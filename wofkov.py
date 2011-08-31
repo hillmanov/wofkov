@@ -1,17 +1,22 @@
 import re
-from dal import *
 from collections import defaultdict
 from collections import OrderedDict
 from itertools import product
+import sqlite3
 #from nltk.corpus import brown, treebank, words as words_list
 
 class WofKov(object):
     def __init__(self, open_file):
-        self._db = DAL("sqlite://wofkov_db.sqlite", migrate = False)
-        self._db.define_table('unigram', Field('word'), Field('frequency', 'integer'))
-        self._db.define_table('bigram', Field('context'), Field('word'), Field('frequency', 'integer'))
-        self._db.define_table('trigram', Field('context_1'), Field('context_2'), Field('word'), Field('frequency', 'integer'))
-        #self._init_database()
+
+        # Initialize database connection
+        self._conn = sqlite3.connect("wofkov_db.sqlite")
+        self._c = self._conn.cursor()
+
+#        self._db = DAL("sqlite://wofkov_db.sqlite", migrate = False)
+#        self._db.define_table('unigram', Field('word'), Field('frequency', 'integer'))
+#        self._db.define_table('bigram', Field('context'), Field('word'), Field('frequency', 'integer'))
+#        self._db.define_table('trigram', Field('context_1'), Field('context_2'), Field('word'), Field('frequency', 'integer'))
+#        #self._init_database()
 
     def _singles(self, words):
         if len(words) < 1:
@@ -65,13 +70,13 @@ class WofKov(object):
             # First, try the trigram...
             if index + 3 <= num_words and not skip_trigram:
                 context_1, context_2, word = glob_friendly_parts[index:index + 3]
-                trigram_results = self._db.executesql("""
+                trigram_results = self._c.execute("""
                     SELECT context_1, context_2, word
                     FROM trigram 
-                    WHERE context_1 GLOB "{}"
-                    AND context_2 GLOB "{}"
-                    AND word GLOB "{}"
-                    ORDER BY frequency DESC """.format(context_1, context_2, word))
+                    WHERE context_1 GLOB ?
+                    AND context_2 GLOB ?
+                    AND word GLOB ?
+                    ORDER BY frequency DESC """, (context_1, context_2, word)).fetchall()
 
                 if len(trigram_results) > 0:
                     results[index].append(trigram_results)
@@ -85,12 +90,13 @@ class WofKov(object):
             elif index + 2 <= num_words and not skip_bigram:
                 # Try the bigram
                 context, word = glob_friendly_parts[index:index + 2]
-                bigram_results = self._db.executesql("""
+                bigram_results = self._c.execute("""
                     SELECT context, word
                     FROM bigram 
-                    WHERE context GLOB "{}"
-                    AND word GLOB "{}"
-                    ORDER BY frequency DESC """.format(context, word))
+                    WHERE context GLOB ?
+                    AND word GLOB ?
+                    ORDER BY frequency DESC """, (context, word)).fetchall()
+
                 if len(bigram_results) > 0:
                     results[index].append(bigram_results)
                     index += 1
@@ -102,11 +108,12 @@ class WofKov(object):
                     continue
             elif index + 1 <= num_words:
                 word = glob_friendly_parts[index]
-                unigram_results = self._db.executesql("""
+                unigram_results = self._c.execute("""
                     SELECT word
                     FROM unigram
-                    WHERE word GLOB "{}"
-                    ORDER BY frequency DESC """.format(word))
+                    WHERE word GLOB ?
+                    ORDER BY frequency DESC """, (word,)).fetchall()
+
                 if len(unigram_results) > 0:
                     results[index].append(unigram_results)
                     index += 1
