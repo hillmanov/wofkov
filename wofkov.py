@@ -1,9 +1,6 @@
 import re
 from collections import defaultdict
-try: 
-    from collections import OrderedDict
-except:
-    from my_collections import OrderedDict
+from collections import OrderedDict
 from itertools import product
 import sqlite3
 import os
@@ -11,7 +8,7 @@ import os
 class WofKov(object):
     def __init__(self):
         # Initialize database connection
-        self._conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.realpath(__file__)), "wofkov_db.sqlite"))
+        self._conn = sqlite3.connect(os.path.join(os.path.dirname(os.path.realpath(__file__)), "db.sqlite"))
         self._c = self._conn.cursor()
 
     def get_possibilities(self, puzzle, excluded_letters):
@@ -100,5 +97,3 @@ class WofKov(object):
                     continue
             skip_trigram = False
             skip_bigram = False
-
-    
